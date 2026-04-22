@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { AppView, UserData } from '@/lib/types'
 import Onboarding from '@/components/Onboarding'
 import Home from '@/components/Home'
@@ -10,19 +10,36 @@ export default function App() {
   const [view, setView] = useState<AppView>('onboard')
   const [userData, setUserData] = useState<UserData | null>(null)
   const [subject, setSubject] = useState('science')
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
+
+  useEffect(() => {
+    const saved = localStorage.getItem('exam100_user')
+    if (saved) {
+      try {
+        const data = JSON.parse(saved) as UserData
+        setUserData(data)
+        setView('home')
+      } catch {
+        localStorage.removeItem('exam100_user')
+      }
+    }
+  }, [])
 
   const onboardComplete = (data: UserData) => {
+    localStorage.setItem('exam100_user', JSON.stringify(data))
     setUserData(data)
     setView('home')
   }
 
   const startStudy = (subj: string) => {
     setSubject(subj)
+    setUploadedFiles([])
     setView('study')
   }
 
-  const analyzeUpload = (subj: string) => {
+  const analyzeUpload = (subj: string, files: File[]) => {
     setSubject(subj)
+    setUploadedFiles(files)
     setView('study')
   }
 
@@ -36,7 +53,7 @@ export default function App() {
         <Upload onAnalyze={analyzeUpload} onBack={() => setView('home')} />
       )}
       {view === 'study' && userData && (
-        <Study subject={subject} userData={userData} onHome={() => setView('home')} />
+        <Study subject={subject} userData={userData} files={uploadedFiles} onHome={() => setView('home')} />
       )}
     </main>
   )

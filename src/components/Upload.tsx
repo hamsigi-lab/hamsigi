@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react'
 
 interface Props {
-  onAnalyze: (subject: string) => void
+  onAnalyze: (subject: string, files: File[]) => void
   onBack: () => void
 }
 
@@ -29,14 +29,14 @@ export default function Upload({ onAnalyze, onBack }: Props) {
   const [subject, setSubject] = useState('')
   const [type, setType] = useState('textbook')
   const [unit, setUnit] = useState('')
-  const [files, setFiles] = useState<string[]>([])
+  const [files, setFiles] = useState<File[]>([])
   const [analyzing, setAnalyzing] = useState(false)
   const [drag, setDrag] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const addFiles = (fl: FileList | null) => {
     if (!fl) return
-    setFiles(prev => [...prev, ...Array.from(fl).map(f => f.name)])
+    setFiles(prev => [...prev, ...Array.from(fl)])
   }
 
   const selectSubject = (val: string) => { setSubject(val); setStep(2) }
@@ -44,7 +44,7 @@ export default function Upload({ onAnalyze, onBack }: Props) {
   const analyze = () => {
     if (files.length === 0) { alert('파일을 업로드해주세요.'); return }
     setAnalyzing(true)
-    setTimeout(() => { setAnalyzing(false); onAnalyze(subject) }, 2200)
+    setTimeout(() => { setAnalyzing(false); onAnalyze(subject, files) }, 2200)
   }
 
   const selectedSubject = SUBJECTS.find(s => s.value === subject)
@@ -185,7 +185,7 @@ export default function Upload({ onAnalyze, onBack }: Props) {
                 {files.map((f, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: '#fff', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh-xs)' }}>
                     <span style={{ fontSize: 20 }}>📄</span>
-                    <span style={{ flex: 1, fontSize: 14, color: 'var(--t1)', fontWeight: 500 }}>{f}</span>
+                    <span style={{ flex: 1, fontSize: 14, color: 'var(--t1)', fontWeight: 500 }}>{f.name}</span>
                     <span style={{ fontSize: 12, padding: '3px 10px', borderRadius: 99, background: 'var(--green-soft)', color: 'var(--green-text)', fontWeight: 700 }}>준비됨</span>
                     <button onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))} className="btn-ghost" style={{ fontSize: 16, lineHeight: 1 }}>✕</button>
                   </div>

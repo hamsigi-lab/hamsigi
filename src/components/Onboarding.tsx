@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import type { UserData } from '@/lib/types'
 import { PUBLISHERS, GRADES } from '@/lib/data'
 
@@ -9,6 +9,14 @@ type Screen = 'landing' | 'signup' | 'school' | 'publisher'
 
 export default function Onboarding({ onComplete }: Props) {
   const [screen, setScreen] = useState<Screen>('landing')
+  const [savedUser, setSavedUser] = useState<UserData | null>(null)
+
+  useEffect(() => {
+    const saved = localStorage.getItem('exam100_user')
+    if (saved) {
+      try { setSavedUser(JSON.parse(saved)) } catch { /* ignore */ }
+    }
+  }, [])
   const [form, setForm] = useState({ name: '', email: '', pw: '', school: '', region: '', grade: '', publishers: [] as string[] })
   const [err, setErr] = useState('')
   const [schoolQuery, setSchoolQuery] = useState('')
@@ -53,6 +61,10 @@ export default function Onboarding({ onComplete }: Props) {
   }
 
   const submitSocial = (provider: string) => {
+    if (savedUser) {
+      onComplete(savedUser)
+      return
+    }
     setForm(f => ({ ...f, name: provider === 'google' ? '구글 사용자' : 'Apple 사용자', email: `user@${provider}.com` }))
     setScreen('school')
   }
@@ -152,7 +164,15 @@ export default function Onboarding({ onComplete }: Props) {
                 계정을 만들어 학습 기록을 저장하세요.
               </p>
 
-              <SocialBtn icon="G" label="Google로 계속하기" bg="#fff" border="#DADCE0" color="#3C4043" onClick={() => submitSocial('google')} />
+              {savedUser && (
+                <div style={{ marginBottom: 16, padding: '14px 16px', background: 'var(--brand-soft)', border: '1.5px solid var(--brand-border)', borderRadius: 'var(--r-lg)', cursor: 'pointer' }}
+                  onClick={() => onComplete(savedUser)}>
+                  <div style={{ fontSize: 12, color: 'var(--brand-text)', fontWeight: 600, marginBottom: 4 }}>이전에 로그인한 계정</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--t1)' }}>{savedUser.name}</div>
+                  <div style={{ fontSize: 13, color: 'var(--t2)' }}>{savedUser.school} · {savedUser.grade}</div>
+                </div>
+              )}
+              <SocialBtn icon="G" label={savedUser ? `${savedUser.name}으로 계속하기` : 'Google로 계속하기'} bg="#fff" border="#DADCE0" color="#3C4043" onClick={() => submitSocial('google')} />
               <SocialBtn icon="🍎" label="Apple로 계속하기" bg="#000" border="#000" color="#fff" onClick={() => submitSocial('apple')} style={{ marginTop: 10 }} />
 
               <Divider />

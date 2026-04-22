@@ -7,7 +7,7 @@ import Step3Practice from './study/Step3Practice'
 import Step4Quiz from './study/Step4Quiz'
 import Step5Results from './study/Step5Results'
 
-interface Props { subject: string; userData: UserData; onHome: () => void }
+interface Props { subject: string; userData: UserData; onHome: () => void; files?: File[] }
 
 const STEPS = [
   { n: 1, label: '출제분석' },
@@ -17,7 +17,7 @@ const STEPS = [
   { n: 5, label: '결과' },
 ]
 
-export default function Study({ subject, userData, onHome }: Props) {
+export default function Study({ subject, userData, onHome, files }: Props) {
   const [step, setStep] = useState<StudyStep>(1)
   const [webOn, setWebOn] = useState(false)
   const [focusCid, setFocusCid] = useState<string | undefined>()
@@ -69,7 +69,7 @@ export default function Study({ subject, userData, onHome }: Props) {
 
       {/* Content */}
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '40px 24px' }}>
-        {step === 1 && <Step1Analysis onNext={goStep} webOn={webOn} setWebOn={setWebOn} />}
+        {step === 1 && <Step1Analysis onNext={goStep} webOn={webOn} setWebOn={setWebOn} subject={subject} files={files} />}
         {step === 2 && <Step2ConceptMap onNext={goStep} onFocusCid={setFocusCid} />}
         {step === 3 && <Step3Practice onNext={goStep} focusCid={focusCid} />}
         {step === 4 && <Step4Quiz onNext={goStep} onSubmit={handleSubmit} />}

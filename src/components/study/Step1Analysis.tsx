@@ -1,20 +1,82 @@
 'use client'
-import { useState } from 'react'
-import { SCIENCE_PROBS } from '@/lib/data'
+import { useState, useEffect } from 'react'
 
-interface Props { onNext: (step: number) => void; webOn: boolean; setWebOn: (v: boolean) => void }
+interface Topic {
+  title: string
+  pct: number
+  type: '서술형' | '서답형' | '객관식'
+  keys: string[]
+  desc: string
+  src: string
+  color: string
+  cid: string
+}
 
-export default function Step1Analysis({ onNext, webOn, setWebOn }: Props) {
+interface Props { onNext: (step: number) => void; webOn: boolean; setWebOn: (v: boolean) => void; subject: string; files?: File[] }
+
+export default function Step1Analysis({ onNext, webOn, setWebOn, subject, files }: Props) {
   const [openIdx, setOpenIdx] = useState<number | null>(null)
   const [filter, setFilter] = useState('all')
+  const [topics, setTopics] = useState<Topic[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [summary, setSummary] = useState('')
 
-  const filtered = SCIENCE_PROBS.filter(p => filter === 'all' || p.type === filter)
+  useEffect(() => {
+    const analyze = async () => {
+      setLoading(true)
+      setError('')
+      try {
+        const formData = new FormData()
+        formData.append('subject', subject)
+        if (files && files.length > 0) {
+          files.forEach(f => formData.append('files', f))
+        }
+        const res = await fetch('/api/analyze', { method: 'POST', body: formData })
+        if (!res.ok) throw new Error('분석 실패')
+        const data = await res.json()
+        setTopics(data.topics || [])
+        setSummary(data.summary || '')
+      } catch {
+        setError('AI 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
+      } finally {
+        setLoading(false)
+      }
+    }
+    analyze()
+  }, [subject, files])
+
+  const filtered = topics.filter(p => filter === 'all' || p.type === filter)
+
+  if (loading) {
+    return (
+      <div className="fade-in" style={{ textAlign: 'center', padding: '80px 24px' }}>
+        <div style={{ fontSize: 52, marginBottom: 20 }}>
+          <span className="spin-anim" style={{ display: 'inline-block' }}>⟳</span>
+        </div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--t1)', marginBottom: 8 }}>AI가 자료를 분석 중이에요</div>
+        <div style={{ fontSize: 14, color: 'var(--t2)' }}>업로드 자료 + 출제 패턴을 종합하고 있어요...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="fade-in" style={{ textAlign: 'center', padding: '80px 24px' }}>
+        <div style={{ fontSize: 40, marginBottom: 16 }}>⚠️</div>
+        <div style={{ fontSize: 16, color: 'var(--red-text)', marginBottom: 20 }}>{error}</div>
+        <button onClick={() => window.location.reload()} className="btn-brand" style={{ padding: '10px 24px', fontSize: 14 }}>다시 시도</button>
+      </div>
+    )
+  }
 
   return (
     <div className="fade-in">
       <div style={{ marginBottom: 22 }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--t1)', marginBottom: 5 }}>출제 예상 분석</h1>
-        <p style={{ fontSize: 13, color: 'var(--t2)' }}>업로드 자료 + 학교 데이터를 AI가 분석했습니다. 클릭하면 개념 요약이 열립니다.</p>
+        <p style={{ fontSize: 13, color: 'var(--t2)' }}>
+          {summary || '업로드 자료를 AI가 분석해 출제 가능성 높은 주제를 추출했습니다.'}
+        </p>
       </div>
 
       {/* Web toggle */}
@@ -25,29 +87,8 @@ export default function Step1Analysis({ onNext, webOn, setWebOn }: Props) {
           <span style={{ position: 'absolute', width: 16, height: 16, left: webOn ? 20 : 3, top: 3, borderRadius: '50%', background: '#fff', transition: '0.3s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
         </label>
         <span style={{ fontSize: 12, color: 'var(--t2)' }}>전국 기출 포함</span>
-        <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: 'var(--blue-soft)', color: 'var(--blue-text)', fontFamily: 'var(--mono)', fontWeight: 600 }}>전국기출</span>
         <span style={{ fontSize: 11, color: 'var(--t3)', marginLeft: 'auto' }}>{webOn ? '전국 기출 포함' : '업로드 자료만'}</span>
       </div>
-
-      {webOn && (
-        <div className="fade-in" style={{ background: 'var(--blue-soft)', border: '1px solid #BFDBFE', borderRadius: 'var(--r)', padding: '16px 18px', marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: 'var(--blue)', color: '#fff', fontFamily: 'var(--mono)', fontWeight: 600 }}>전국 기출 분석</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--t1)' }}>전국 학교 출제 경향 요약</span>
-          </div>
-          {[
-            ['1위', '기체 반응 법칙 단위 기체 계산', '전국 기출 92% 등장. 수소+산소, 질소+수소 한쪽이 남는 계산 문제'],
-            ['2위', '질량 보존 법칙 열린/닫힌 용기 비교', '89%. 뚜껑 열고 닫고 상태별 질량 비교 실험 문제 필출'],
-            ['3위', '일정 성분비 그래프 해석 + 남은 물질 계산', '87%. 그래프에서 반응 질량비 읽어 계산'],
-          ].map(([rank, title, desc]) => (
-            <div key={rank} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 8 }}>
-              <span style={{ color: 'var(--blue-text)', fontFamily: 'var(--mono)', fontSize: 11, flexShrink: 0, paddingTop: 2, fontWeight: 700 }}>{rank}</span>
-              <span style={{ fontSize: 13 }}><strong style={{ color: 'var(--t1)' }}>{title}</strong> — <span style={{ color: 'var(--t2)' }}>{desc}</span></span>
-            </div>
-          ))}
-          <div style={{ fontSize: 11, color: 'var(--t3)', marginTop: 8 }}>출처: 전국 중3 과학 기출 문제 분석 (2022~2025)</div>
-        </div>
-      )}
 
       {/* Filter tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
@@ -64,8 +105,11 @@ export default function Step1Analysis({ onNext, webOn, setWebOn }: Props) {
         ))}
       </div>
 
-      {/* Prob list */}
+      {/* Topic list */}
       <div className="card" style={{ padding: '4px 20px 12px' }}>
+        {filtered.length === 0 && (
+          <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--t3)', fontSize: 14 }}>해당 유형의 예상 문제가 없어요.</div>
+        )}
         {filtered.map((p, i) => (
           <div key={i}>
             <div
@@ -77,14 +121,11 @@ export default function Step1Analysis({ onNext, webOn, setWebOn }: Props) {
                 <div style={{ height: '100%', width: `${p.pct}%`, background: p.color, borderRadius: 2 }} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--t1)', marginBottom: 2 }}>
-                  {p.title}
-                  {webOn && p.web && <span style={{ marginLeft: 6, fontSize: 10, padding: '2px 7px', borderRadius: 20, background: 'var(--blue-soft)', color: 'var(--blue-text)', fontFamily: 'var(--mono)', fontWeight: 600 }}>전국기출</span>}
-                </div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--t1)', marginBottom: 2 }}>{p.title}</div>
                 <div style={{ fontSize: 11, color: 'var(--t3)' }}>{p.src}</div>
               </div>
               <span style={{
-                fontSize: 11, padding: '2px 9px', borderRadius: 20, fontWeight: 600,
+                fontSize: 11, padding: '2px 9px', borderRadius: 20, fontWeight: 600, flexShrink: 0,
                 background: p.type === '서술형' ? 'var(--red-soft)' : p.type === '서답형' ? 'var(--amber-soft)' : 'var(--brand-soft)',
                 color: p.type === '서술형' ? 'var(--red-text)' : p.type === '서답형' ? 'var(--amber-text)' : 'var(--brand-text)',
               }}>{p.type}</span>
@@ -94,7 +135,7 @@ export default function Step1Analysis({ onNext, webOn, setWebOn }: Props) {
             {openIdx === i && (
               <div className="fade-in" style={{ background: 'var(--bg2)', border: '1px solid var(--brand-border)', borderRadius: 'var(--r)', padding: 16, margin: '0 -4px 12px' }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
-                  {p.keys.map(k => (
+                  {(p.keys || []).map(k => (
                     <span key={k} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, background: 'var(--brand-soft)', color: 'var(--brand-text)', border: '1px solid var(--brand-border)', fontFamily: 'var(--mono)' }}>{k}</span>
                   ))}
                 </div>
