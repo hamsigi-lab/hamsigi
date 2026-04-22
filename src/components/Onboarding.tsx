@@ -212,6 +212,24 @@ export default function Onboarding({ onComplete, googleUser }: Props) {
               <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--t1)', letterSpacing: '-0.03em', marginBottom: 6 }}>로그인</h1>
               <p style={{ fontSize: 14, color: 'var(--t2)', marginBottom: 28 }}>이전에 가입한 계정으로 로그인하세요.</p>
 
+              <button
+                onClick={() => signIn('google', { callbackUrl: '/' })}
+                style={{
+                  width: '100%', padding: '13px 16px', borderRadius: 'var(--r-lg)',
+                  border: '1.5px solid #DADCE0', background: '#fff', color: '#3C4043',
+                  fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                  transition: 'all 0.15s', marginBottom: 4,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--sh-sm)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none' }}
+              >
+                <GoogleIcon />
+                Google로 로그인
+              </button>
+
+              <Divider />
+
               <FLabel>이메일</FLabel>
               <input className="input-base" type="email" placeholder="가입한 이메일 주소" value={form.email} onChange={e => update('email', e.target.value)} />
               <FLabel>비밀번호</FLabel>
@@ -234,7 +252,25 @@ export default function Onboarding({ onComplete, googleUser }: Props) {
             <div className="slide-up">
               <button onClick={() => { setErr(''); setScreen('landing') }} className="btn-ghost" style={{ fontSize: 13, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 4 }}>← 뒤로</button>
               <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--t1)', letterSpacing: '-0.03em', marginBottom: 6 }}>회원가입</h1>
-              <p style={{ fontSize: 14, color: 'var(--t2)', marginBottom: 28 }}>처음 이용하시면 학교 정보를 한 번만 입력하면 돼요.</p>
+              <p style={{ fontSize: 14, color: 'var(--t2)', marginBottom: 24 }}>처음 이용하시면 학교 정보를 한 번만 입력하면 돼요.</p>
+
+              <button
+                onClick={() => signIn('google', { callbackUrl: '/' })}
+                style={{
+                  width: '100%', padding: '13px 16px', borderRadius: 'var(--r-lg)',
+                  border: '1.5px solid #DADCE0', background: '#fff', color: '#3C4043',
+                  fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                  transition: 'all 0.15s', marginBottom: 4,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--sh-sm)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none' }}
+              >
+                <GoogleIcon />
+                Google로 회원가입
+              </button>
+
+              <Divider />
 
               <FLabel>이름</FLabel>
               <input className="input-base" placeholder="홍길동" value={form.name} onChange={e => update('name', e.target.value)} />
