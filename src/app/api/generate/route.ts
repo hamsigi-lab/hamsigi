@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { Topic } from '@/lib/types'
 
+export const runtime = 'edge'
+
 export async function POST(req: NextRequest) {
   try {
     const { topics, subject } = await req.json() as { topics: Topic[]; subject: string }

@@ -1,7 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+export const runtime = 'edge'
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,17 +10,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 })
     }
 
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-5-20250514',
-      max_tokens: 1024,
-      system: system || '당신은 친절한 학습 도우미입니다. 한국어로 답변하세요.',
-      messages,
+    const apiKey = process.env.GROQ_API_KEY
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: system || '당신은 친절한 학습 도우미입니다. 한국어로 답변하세요.' },
+          ...messages,
+        ],
+        max_tokens: 1024,
+        temperature: 0.5,
+      }),
     })
 
-    const text = response.content[0].type === 'text' ? response.content[0].text : ''
+    if (!res.ok) throw new Error(`Groq: ${res.status}`)
+
+    const data = await res.json()
+    const text = data.choices?.[0]?.message?.content || ''
     return NextResponse.json({ content: text })
   } catch (err) {
-    console.error('AI API error:', err)
-    return NextResponse.json({ error: 'AI 응답 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' }, { status: 500 })
+    console.error('Chat error:', err)
+    return NextResponse.json({ error: 'AI 응답 생성에 실패했습니다.' }, { status: 500 })
   }
 }

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+export const runtime = 'edge'
+
 const SUBJECT_NAMES: Record<string, string> = {
   science: '과학', social: '사회', history: '역사', math: '수학',
   korean: '국어', english: '영어', moral: '도덕/윤리', tech: '기술·가정',
@@ -8,16 +10,6 @@ const SUBJECT_NAMES: Record<string, string> = {
 const COLORS = ['#ef4444', '#f59e0b', '#6366F1', '#8B5CF6', '#EC4899', '#10B981', '#3B82F6', '#14B8A6']
 
 async function extractText(file: File): Promise<string> {
-  if (file.type === 'application/pdf') {
-    try {
-      const buffer = await file.arrayBuffer()
-      const pdfParse = (await import('pdf-parse')).default
-      const data = await pdfParse(Buffer.from(buffer))
-      return data.text?.slice(0, 6000) || ''
-    } catch {
-      return ''
-    }
-  }
   if (file.type.startsWith('text/')) {
     return (await file.text()).slice(0, 6000)
   }
@@ -31,7 +23,6 @@ export async function POST(req: NextRequest) {
     const files = formData.getAll('files') as File[]
     const subjectName = SUBJECT_NAMES[subject] || subject
 
-    // 파일 텍스트 추출
     const extractedTexts: string[] = []
     for (const file of files) {
       if (file.size > 8 * 1024 * 1024) continue
