@@ -2,6 +2,24 @@
 import { useState, useEffect } from 'react'
 import type { Topic, StudyContent } from '@/lib/types'
 
+async function extractPDFText(file: File): Promise<string> {
+  try {
+    const pdfjsLib = await import('pdfjs-dist')
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`
+    const arrayBuffer = await file.arrayBuffer()
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+    let text = ''
+    for (let i = 1; i <= Math.min(pdf.numPages, 15); i++) {
+      const page = await pdf.getPage(i)
+      const content = await page.getTextContent()
+      text += content.items.map((item: Record<string, unknown>) => (typeof item.str === 'string' ? item.str : '')).join(' ') + '\n'
+    }
+    return text.slice(0, 8000)
+  } catch {
+    return ''
+  }
+}
+
 interface Props {
   onNext: (step: number) => void
   webOn: boolean
@@ -34,7 +52,14 @@ export default function Step1Analysis({ onNext, webOn, setWebOn, subject, files,
         const formData = new FormData()
         formData.append('subject', subject)
         if (files && files.length > 0) {
-          files.forEach(f => formData.append('files', f))
+          for (const f of files) {
+            if (f.type === 'application/pdf') {
+              const text = await extractPDFText(f)
+              if (text.trim()) formData.append('pdfTexts', `[${f.name}]\n${text}`)
+            } else {
+              formData.append('files', f)
+            }
+          }
         }
         const res = await fetch('/api/analyze', { method: 'POST', body: formData })
         if (!res.ok) throw new Error('분석 실패')

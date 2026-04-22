@@ -21,9 +21,10 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData()
     const subject = formData.get('subject') as string
     const files = formData.getAll('files') as File[]
+    const pdfTexts = formData.getAll('pdfTexts') as string[]
     const subjectName = SUBJECT_NAMES[subject] || subject
 
-    const extractedTexts: string[] = []
+    const extractedTexts: string[] = [...pdfTexts.filter(t => t.trim())]
     for (const file of files) {
       if (file.size > 8 * 1024 * 1024) continue
       const text = await extractText(file)
