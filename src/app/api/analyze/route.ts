@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-
 export const runtime = 'edge'
+
 
 const SUBJECT_NAMES: Record<string, string> = {
   science: '과학', social: '사회', history: '역사', math: '수학',
