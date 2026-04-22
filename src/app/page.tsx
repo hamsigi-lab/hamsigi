@@ -43,11 +43,17 @@ export default function App() {
     setView('study')
   }
 
+  const logout = () => {
+    localStorage.removeItem('exam100_user')
+    setUserData(null)
+    setView('onboard')
+  }
+
   return (
     <main style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       {view === 'onboard' && <Onboarding onComplete={onboardComplete} />}
       {view === 'home' && userData && (
-        <Home userData={userData} onStudy={startStudy} onUpload={() => setView('upload')} />
+        <Home userData={userData} onStudy={startStudy} onUpload={() => setView('upload')} onLogout={logout} />
       )}
       {view === 'upload' && (
         <Upload onAnalyze={analyzeUpload} onBack={() => setView('home')} />

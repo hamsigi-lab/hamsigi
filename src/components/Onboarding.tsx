@@ -5,18 +5,11 @@ import { PUBLISHERS, GRADES } from '@/lib/data'
 
 interface Props { onComplete: (data: UserData) => void }
 interface School { name: string; region: string; type: string; address: string }
-type Screen = 'landing' | 'signup' | 'school' | 'publisher'
+type Screen = 'landing' | 'login' | 'signup' | 'school' | 'publisher'
 
 export default function Onboarding({ onComplete }: Props) {
   const [screen, setScreen] = useState<Screen>('landing')
   const [savedUser, setSavedUser] = useState<UserData | null>(null)
-
-  useEffect(() => {
-    const saved = localStorage.getItem('exam100_user')
-    if (saved) {
-      try { setSavedUser(JSON.parse(saved)) } catch { /* ignore */ }
-    }
-  }, [])
   const [form, setForm] = useState({ name: '', email: '', pw: '', school: '', region: '', grade: '', publishers: [] as string[] })
   const [err, setErr] = useState('')
   const [schoolQuery, setSchoolQuery] = useState('')
@@ -24,6 +17,13 @@ export default function Onboarding({ onComplete }: Props) {
   const [schoolLoading, setSchoolLoading] = useState(false)
   const [showDrop, setShowDrop] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    const saved = localStorage.getItem('exam100_user')
+    if (saved) {
+      try { setSavedUser(JSON.parse(saved)) } catch { /* ignore */ }
+    }
+  }, [])
 
   const update = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
   const togglePub = (p: string) => setForm(f => ({
@@ -53,6 +53,18 @@ export default function Onboarding({ onComplete }: Props) {
     setShowDrop(false)
   }
 
+  const submitLogin = () => {
+    if (!form.email.includes('@')) { setErr('올바른 이메일을 입력해주세요.'); return }
+    if (!form.pw) { setErr('비밀번호를 입력해주세요.'); return }
+    if (savedUser && savedUser.email === form.email) {
+      onComplete(savedUser)
+    } else if (savedUser) {
+      setErr('이메일이 일치하지 않아요. 저장된 계정: ' + savedUser.email)
+    } else {
+      setErr('계정을 찾을 수 없어요. 회원가입을 해주세요.')
+    }
+  }
+
   const submitSignup = () => {
     if (!form.name.trim()) { setErr('이름을 입력해주세요.'); return }
     if (!form.email.includes('@')) { setErr('올바른 이메일을 입력해주세요.'); return }
@@ -60,12 +72,9 @@ export default function Onboarding({ onComplete }: Props) {
     setErr(''); setScreen('school')
   }
 
-  const submitSocial = (provider: string) => {
-    if (savedUser) {
-      onComplete(savedUser)
-      return
-    }
-    setForm(f => ({ ...f, name: provider === 'google' ? '구글 사용자' : 'Apple 사용자', email: `user@${provider}.com` }))
+  const submitSocial = () => {
+    if (savedUser) { onComplete(savedUser); return }
+    setForm(f => ({ ...f, name: '구글 사용자', email: 'user@google.com' }))
     setScreen('school')
   }
 
@@ -80,17 +89,17 @@ export default function Onboarding({ onComplete }: Props) {
     school: form.school, grade: form.grade, publishers: form.publishers
   })
 
-  const stepIndex = screen === 'landing' ? 0 : screen === 'signup' ? 1 : screen === 'school' ? 2 : 3
+  const stepIndex = screen === 'signup' ? 1 : screen === 'school' ? 2 : screen === 'publisher' ? 3 : 0
+  const showSteps = ['signup', 'school', 'publisher'].includes(screen)
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: '#FAFAFA' }}>
-      {/* Left panel — brand */}
+      {/* Left panel */}
       <div style={{
         width: 420, flexShrink: 0, background: 'linear-gradient(160deg, #6366F1 0%, #8B5CF6 50%, #EC4899 100%)',
         display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
         padding: '48px 40px', position: 'relative', overflow: 'hidden',
       }} className="fade-in">
-        {/* Decorative circles */}
         <div style={{ position: 'absolute', width: 300, height: 300, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', top: -80, right: -80 }} />
         <div style={{ position: 'absolute', width: 200, height: 200, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', bottom: 100, left: -60 }} />
 
@@ -99,7 +108,6 @@ export default function Onboarding({ onComplete }: Props) {
             <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🎯</div>
             <span style={{ fontFamily: 'var(--mono)', fontSize: 18, fontWeight: 700, color: '#fff', letterSpacing: '0.02em' }}>EXAM 100</span>
           </div>
-
           <div style={{ color: '#fff' }}>
             <div style={{ fontSize: 32, fontWeight: 800, lineHeight: 1.2, marginBottom: 16, letterSpacing: '-0.03em' }}>
               시험 100점을<br />목표로 하세요
@@ -110,7 +118,6 @@ export default function Onboarding({ onComplete }: Props) {
           </div>
         </div>
 
-        {/* Feature list */}
         <div style={{ position: 'relative', zIndex: 1 }}>
           {[
             { icon: '📊', text: '출제 확률 % 분석' },
@@ -126,12 +133,12 @@ export default function Onboarding({ onComplete }: Props) {
         </div>
       </div>
 
-      {/* Right panel — form */}
+      {/* Right panel */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 32px', overflowY: 'auto' }}>
         <div style={{ width: '100%', maxWidth: 400 }}>
 
-          {/* Step pills (when past landing) */}
-          {screen !== 'landing' && (
+          {/* Step pills */}
+          {showSteps && (
             <div style={{ display: 'flex', gap: 6, marginBottom: 36 }} className="fade-in">
               {['계정', '학교', '출판사'].map((label, i) => {
                 const idx = i + 1
@@ -161,30 +168,54 @@ export default function Onboarding({ onComplete }: Props) {
                 시작하기
               </h1>
               <p style={{ fontSize: 15, color: 'var(--t2)', marginBottom: 32 }}>
-                계정을 만들어 학습 기록을 저장하세요.
+                AI 시험 대비를 시작해 보세요.
               </p>
 
               {savedUser && (
-                <div style={{ marginBottom: 16, padding: '14px 16px', background: 'var(--brand-soft)', border: '1.5px solid var(--brand-border)', borderRadius: 'var(--r-lg)', cursor: 'pointer' }}
+                <div style={{ marginBottom: 20, padding: '14px 16px', background: 'var(--brand-soft)', border: '1.5px solid var(--brand-border)', borderRadius: 'var(--r-lg)', cursor: 'pointer' }}
                   onClick={() => onComplete(savedUser)}>
-                  <div style={{ fontSize: 12, color: 'var(--brand-text)', fontWeight: 600, marginBottom: 4 }}>이전에 로그인한 계정</div>
+                  <div style={{ fontSize: 11, color: 'var(--brand-text)', fontWeight: 600, marginBottom: 4 }}>저장된 계정으로 바로 시작</div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--t1)' }}>{savedUser.name}</div>
                   <div style={{ fontSize: 13, color: 'var(--t2)' }}>{savedUser.school} · {savedUser.grade}</div>
                 </div>
               )}
-              <SocialBtn icon="G" label={savedUser ? `${savedUser.name}으로 계속하기` : 'Google로 계속하기'} bg="#fff" border="#DADCE0" color="#3C4043" onClick={() => submitSocial('google')} />
-              <SocialBtn icon="🍎" label="Apple로 계속하기" bg="#000" border="#000" color="#fff" onClick={() => submitSocial('apple')} style={{ marginTop: 10 }} />
+
+              <SocialBtn icon="G" label="Google로 계속하기" bg="#fff" border="#DADCE0" color="#3C4043" onClick={submitSocial} />
 
               <Divider />
 
-              <button onClick={() => setScreen('signup')} className="btn-outline" style={{ width: '100%', padding: '13px', fontSize: 15, fontWeight: 600, borderRadius: 'var(--r-lg)' }}>
-                이메일로 가입하기
+              <button onClick={() => { setErr(''); setScreen('login') }} className="btn-brand" style={{ width: '100%', padding: '13px', fontSize: 15, fontWeight: 600, borderRadius: 'var(--r-lg)', marginBottom: 10 }}>
+                로그인
               </button>
+              <button onClick={() => { setErr(''); setScreen('signup') }} className="btn-outline" style={{ width: '100%', padding: '13px', fontSize: 15, fontWeight: 600, borderRadius: 'var(--r-lg)' }}>
+                회원가입 (처음 이용)
+              </button>
+            </div>
+          )}
 
-              <p style={{ marginTop: 24, fontSize: 13, color: 'var(--t3)', textAlign: 'center' }}>
-                이미 계정이 있으신가요?{' '}
-                <span style={{ color: 'var(--brand)', fontWeight: 600, cursor: 'pointer' }} onClick={() => setScreen('signup')}>
-                  로그인
+          {/* ── LOGIN ── */}
+          {screen === 'login' && (
+            <div className="slide-up">
+              <button onClick={() => { setErr(''); setScreen('landing') }} className="btn-ghost" style={{ fontSize: 13, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 4 }}>
+                ← 뒤로
+              </button>
+              <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--t1)', letterSpacing: '-0.03em', marginBottom: 6 }}>로그인</h1>
+              <p style={{ fontSize: 14, color: 'var(--t2)', marginBottom: 28 }}>이전에 가입한 계정으로 로그인하세요.</p>
+
+              <FLabel>이메일</FLabel>
+              <input className="input-base" type="email" placeholder="가입한 이메일 주소" value={form.email} onChange={e => update('email', e.target.value)} />
+              <FLabel>비밀번호</FLabel>
+              <input className="input-base" type="password" placeholder="비밀번호" value={form.pw} onChange={e => update('pw', e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && submitLogin()} />
+
+              {err && <ErrMsg>{err}</ErrMsg>}
+              <button onClick={submitLogin} className="btn-brand" style={{ width: '100%', padding: '14px', fontSize: 15, borderRadius: 'var(--r-lg)', marginTop: 24 }}>
+                로그인 →
+              </button>
+              <p style={{ marginTop: 16, fontSize: 13, color: 'var(--t3)', textAlign: 'center' }}>
+                계정이 없으신가요?{' '}
+                <span style={{ color: 'var(--brand)', fontWeight: 600, cursor: 'pointer' }} onClick={() => { setErr(''); setScreen('signup') }}>
+                  회원가입
                 </span>
               </p>
             </div>
@@ -193,11 +224,11 @@ export default function Onboarding({ onComplete }: Props) {
           {/* ── SIGNUP ── */}
           {screen === 'signup' && (
             <div className="slide-up">
-              <button onClick={() => setScreen('landing')} className="btn-ghost" style={{ fontSize: 13, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <button onClick={() => { setErr(''); setScreen('landing') }} className="btn-ghost" style={{ fontSize: 13, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 4 }}>
                 ← 뒤로
               </button>
-              <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--t1)', letterSpacing: '-0.03em', marginBottom: 6 }}>이메일로 가입</h1>
-              <p style={{ fontSize: 14, color: 'var(--t2)', marginBottom: 28 }}>학습 기록이 안전하게 저장됩니다.</p>
+              <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--t1)', letterSpacing: '-0.03em', marginBottom: 6 }}>회원가입</h1>
+              <p style={{ fontSize: 14, color: 'var(--t2)', marginBottom: 28 }}>처음 이용하시면 학교 정보를 한 번만 입력하면 돼요.</p>
 
               <FLabel>이름</FLabel>
               <input className="input-base" placeholder="홍길동" value={form.name} onChange={e => update('name', e.target.value)} />
@@ -210,6 +241,12 @@ export default function Onboarding({ onComplete }: Props) {
               <button onClick={submitSignup} className="btn-brand" style={{ width: '100%', padding: '14px', fontSize: 15, borderRadius: 'var(--r-lg)', marginTop: 24 }}>
                 다음 →
               </button>
+              <p style={{ marginTop: 16, fontSize: 13, color: 'var(--t3)', textAlign: 'center' }}>
+                이미 계정이 있으신가요?{' '}
+                <span style={{ color: 'var(--brand)', fontWeight: 600, cursor: 'pointer' }} onClick={() => { setErr(''); setScreen('login') }}>
+                  로그인
+                </span>
+              </p>
             </div>
           )}
 
@@ -268,7 +305,7 @@ export default function Onboarding({ onComplete }: Props) {
 
               {err && <ErrMsg>{err}</ErrMsg>}
               <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
-                <button onClick={() => setScreen('signup')} className="btn-outline" style={{ padding: '13px 20px', fontSize: 14, borderRadius: 'var(--r-lg)' }}>← 이전</button>
+                <button onClick={() => { setErr(''); setScreen('signup') }} className="btn-outline" style={{ padding: '13px 20px', fontSize: 14, borderRadius: 'var(--r-lg)' }}>← 이전</button>
                 <button onClick={submitSchool} className="btn-brand" style={{ flex: 1, padding: '14px', fontSize: 15, borderRadius: 'var(--r-lg)' }}>다음 →</button>
               </div>
             </div>

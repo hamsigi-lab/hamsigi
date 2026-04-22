@@ -1,10 +1,12 @@
 'use client'
+import { useState } from 'react'
 import type { UserData } from '@/lib/types'
 
 interface Props {
   userData: UserData
   onStudy: (subject: string) => void
   onUpload: () => void
+  onLogout: () => void
 }
 
 const FEATURES = [
@@ -14,7 +16,8 @@ const FEATURES = [
   { icon: '📈', title: '성취도 분석', desc: '틀린 문제·취약 개념을 추적해 집중 학습을 도와요.' },
 ]
 
-export default function Home({ userData, onUpload }: Props) {
+export default function Home({ userData, onUpload, onLogout }: Props) {
+  const [profileOpen, setProfileOpen] = useState(false)
   const initial = userData.name ? userData.name[0] : '?'
 
   return (
@@ -34,8 +37,69 @@ export default function Home({ userData, onUpload }: Props) {
           <button onClick={onUpload} className="btn-brand" style={{ padding: '8px 18px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
             + 업로드
           </button>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--brand-soft)', border: '2px solid var(--brand-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: 'var(--brand)' }}>
-            {initial}
+
+          {/* Profile button */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setProfileOpen(o => !o)}
+              style={{
+                width: 36, height: 36, borderRadius: '50%',
+                background: 'var(--brand-soft)', border: '2px solid var(--brand-border)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 14, fontWeight: 800, color: 'var(--brand)',
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+              {initial}
+            </button>
+
+            {/* Dropdown */}
+            {profileOpen && (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 150 }} onClick={() => setProfileOpen(false)} />
+                <div className="slide-down" style={{
+                  position: 'absolute', top: 'calc(100% + 10px)', right: 0,
+                  width: 240, background: '#fff', borderRadius: 16,
+                  boxShadow: 'var(--sh-lg)', border: '1px solid var(--bd)', zIndex: 200, overflow: 'hidden',
+                }}>
+                  {/* Profile header */}
+                  <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--bd)', background: 'var(--bg2)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'var(--brand-soft)', border: '2px solid var(--brand-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, color: 'var(--brand)', flexShrink: 0 }}>
+                        {initial}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--t1)' }}>{userData.name}</div>
+                        <div style={{ fontSize: 12, color: 'var(--t3)', marginTop: 1 }}>{userData.email}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Profile info */}
+                  <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--bd)' }}>
+                    <InfoRow label="학교" value={userData.school} />
+                    <InfoRow label="지역" value={userData.region} />
+                    <InfoRow label="학년" value={userData.grade} />
+                    {userData.publishers.length > 0 && (
+                      <InfoRow label="출판사" value={userData.publishers.join(', ')} />
+                    )}
+                  </div>
+
+                  {/* Logout */}
+                  <button
+                    onClick={() => { setProfileOpen(false); onLogout() }}
+                    style={{
+                      width: '100%', padding: '13px 18px', textAlign: 'left',
+                      background: 'transparent', border: 'none', cursor: 'pointer',
+                      fontSize: 14, color: 'var(--red-text)', fontFamily: 'inherit', fontWeight: 600,
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--red-soft)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    로그아웃
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -128,6 +192,15 @@ export default function Home({ userData, onUpload }: Props) {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+      <span style={{ fontSize: 12, color: 'var(--t3)', fontWeight: 600, flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: 13, color: 'var(--t1)', fontWeight: 500, textAlign: 'right' }}>{value}</span>
     </div>
   )
 }
