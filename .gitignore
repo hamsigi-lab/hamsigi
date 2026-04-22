@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# lock files — let Cloudflare Pages use npm install instead of npm ci
+package-lock.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
