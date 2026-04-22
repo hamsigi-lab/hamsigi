@@ -1,28 +1,32 @@
 'use client'
 import { useState, useEffect } from 'react'
+import type { Topic, StudyContent } from '@/lib/types'
 
-interface Topic {
-  title: string
-  pct: number
-  type: '서술형' | '서답형' | '객관식'
-  keys: string[]
-  desc: string
-  src: string
-  color: string
-  cid: string
+interface Props {
+  onNext: (step: number) => void
+  webOn: boolean
+  setWebOn: (v: boolean) => void
+  subject: string
+  files?: File[]
+  savedContent?: StudyContent | null
+  onAnalysisComplete?: (topics: Topic[], summary: string) => void
 }
 
-interface Props { onNext: (step: number) => void; webOn: boolean; setWebOn: (v: boolean) => void; subject: string; files?: File[] }
-
-export default function Step1Analysis({ onNext, webOn, setWebOn, subject, files }: Props) {
+export default function Step1Analysis({ onNext, webOn, setWebOn, subject, files, savedContent, onAnalysisComplete }: Props) {
   const [openIdx, setOpenIdx] = useState<number | null>(null)
   const [filter, setFilter] = useState('all')
-  const [topics, setTopics] = useState<Topic[]>([])
-  const [loading, setLoading] = useState(true)
+  const [topics, setTopics] = useState<Topic[]>(savedContent?.topics || [])
+  const [loading, setLoading] = useState(!savedContent?.topics?.length)
   const [error, setError] = useState('')
-  const [summary, setSummary] = useState('')
+  const [summary, setSummary] = useState(savedContent?.summary || '')
 
   useEffect(() => {
+    if (savedContent?.topics?.length) {
+      setTopics(savedContent.topics)
+      setSummary(savedContent.summary || '')
+      setLoading(false)
+      return
+    }
     const analyze = async () => {
       setLoading(true)
       setError('')
@@ -35,8 +39,11 @@ export default function Step1Analysis({ onNext, webOn, setWebOn, subject, files 
         const res = await fetch('/api/analyze', { method: 'POST', body: formData })
         if (!res.ok) throw new Error('분석 실패')
         const data = await res.json()
-        setTopics(data.topics || [])
-        setSummary(data.summary || '')
+        const t = data.topics || []
+        const s = data.summary || ''
+        setTopics(t)
+        setSummary(s)
+        onAnalysisComplete?.(t, s)
       } catch {
         setError('AI 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
       } finally {
@@ -44,7 +51,7 @@ export default function Step1Analysis({ onNext, webOn, setWebOn, subject, files 
       }
     }
     analyze()
-  }, [subject, files])
+  }, [subject])
 
   const filtered = topics.filter(p => filter === 'all' || p.type === filter)
 

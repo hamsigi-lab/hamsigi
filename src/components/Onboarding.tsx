@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { signIn } from 'next-auth/react'
 import type { UserData } from '@/lib/types'
 import { PUBLISHERS, GRADES } from '@/lib/data'
@@ -13,11 +13,17 @@ type Screen = 'landing' | 'login' | 'signup' | 'school' | 'publisher'
 
 export default function Onboarding({ onComplete, googleUser }: Props) {
   // Google 로그인은 됐지만 학교 정보 없으면 바로 school 화면으로
-  const [screen, setScreen] = useState<Screen>(googleUser ? 'school' : 'landing')
+  const [screen, setScreen] = useState<Screen>('landing')
   const [form, setForm] = useState({
-    name: googleUser?.name || '', email: googleUser?.email || '',
-    pw: '', school: '', region: '', grade: '', publishers: [] as string[]
+    name: '', email: '', pw: '', school: '', region: '', grade: '', publishers: [] as string[]
   })
+
+  useEffect(() => {
+    if (googleUser?.email) {
+      setForm(f => ({ ...f, name: googleUser.name, email: googleUser.email }))
+      setScreen('school')
+    }
+  }, [googleUser?.email])
   const [err, setErr] = useState('')
   const [schoolQuery, setSchoolQuery] = useState('')
   const [schoolResults, setSchoolResults] = useState<School[]>([])
@@ -173,7 +179,7 @@ export default function Onboarding({ onComplete, googleUser }: Props) {
               <p style={{ fontSize: 15, color: 'var(--t2)', marginBottom: 32 }}>AI 시험 대비를 시작해 보세요.</p>
 
               <button
-                onClick={() => signIn('google')}
+                onClick={() => signIn('google', { callbackUrl: '/' })}
                 style={{
                   width: '100%', padding: '13px 16px', borderRadius: 'var(--r-lg)',
                   border: '1.5px solid #DADCE0', background: '#fff', color: '#3C4043',

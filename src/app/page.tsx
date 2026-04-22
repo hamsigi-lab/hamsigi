@@ -1,15 +1,11 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 import type { AppView, UserData } from '@/lib/types'
 import Onboarding from '@/components/Onboarding'
 import Home from '@/components/Home'
 import Upload from '@/components/Upload'
 import Study from '@/components/Study'
-
-function schoolKey(email: string) {
-  return `exam100_school_${email}`
-}
 
 export default function App() {
   const { data: session, status } = useSession()
@@ -17,46 +13,43 @@ export default function App() {
   const [userData, setUserData] = useState<UserData | null>(null)
   const [subject, setSubject] = useState('science')
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
+  const [loggingOut, setLoggingOut] = useState(false)
 
   useEffect(() => {
     if (status === 'loading') return
 
-    if (session?.user?.email) {
-      // Google로 로그인됨 — 학교 정보 로드
-      const saved = localStorage.getItem(schoolKey(session.user.email))
+    if (status === 'authenticated' && session?.user?.email) {
+      const key = `exam100_school_${session.user.email}`
+      const saved = localStorage.getItem(key)
       if (saved) {
         try {
           const schoolData = JSON.parse(saved)
-          setUserData({
-            name: session.user.name || '',
-            email: session.user.email,
-            ...schoolData,
-          })
+          setUserData({ name: session.user.name || '', email: session.user.email, ...schoolData })
           setView('home')
-          return
-        } catch { /* ignore */ }
+        } catch {
+          localStorage.removeItem(key)
+        }
       }
-      // Google 로그인은 됐지만 학교 정보 없음 → 온보딩 school 단계
-      setView('onboard')
-    } else {
-      // 이메일 로그인 체크 (Google 아닌 경우)
+      // 학교 정보 없으면 view='onboard' 유지 (학교 입력 단계)
+    } else if (status === 'unauthenticated') {
+      // 이메일 가입 사용자 체크
       const saved = localStorage.getItem('exam100_user')
       if (saved) {
         try {
           setUserData(JSON.parse(saved))
           setView('home')
-          return
-        } catch { /* ignore */ }
+        } catch {
+          localStorage.removeItem('exam100_user')
+        }
       }
-      setView('onboard')
+      // 아무것도 없으면 view='onboard' 유지 (로그인 화면)
     }
-  }, [session, status])
+  }, [status, session])
 
   const onboardComplete = (data: UserData) => {
     if (session?.user?.email) {
-      // Google 로그인 사용자 → 학교 정보만 localStorage에 저장
       const { name: _n, email: _e, ...schoolData } = data
-      localStorage.setItem(schoolKey(session.user.email), JSON.stringify(schoolData))
+      localStorage.setItem(`exam100_school_${session.user.email}`, JSON.stringify(schoolData))
     } else {
       localStorage.setItem('exam100_user', JSON.stringify(data))
     }
@@ -64,42 +57,33 @@ export default function App() {
     setView('home')
   }
 
-  const logout = () => {
-    if (userData?.email) {
-      localStorage.removeItem(schoolKey(userData.email))
-    }
+  const logout = async () => {
+    setLoggingOut(true)
     localStorage.removeItem('exam100_user')
     setUserData(null)
     setView('onboard')
+    if (session?.user?.email) {
+      await signOut({ redirect: false })
+    }
+    setLoggingOut(false)
   }
 
-  const analyzeUpload = (subj: string, files: File[]) => {
-    setSubject(subj)
-    setUploadedFiles(files)
-    setView('study')
-  }
-
-  if (status === 'loading') {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg2)' }}>
-        <span className="spin-anim" style={{ fontSize: 32, color: 'var(--brand)' }}>⟳</span>
-      </div>
-    )
-  }
+  const googleUser = (!loggingOut && session?.user) ? {
+    name: session.user.name || '',
+    email: session.user.email || '',
+    image: session.user.image || '',
+  } : null
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       {view === 'onboard' && (
-        <Onboarding
-          onComplete={onboardComplete}
-          googleUser={session?.user ? { name: session.user.name || '', email: session.user.email || '', image: session.user.image || '' } : null}
-        />
+        <Onboarding onComplete={onboardComplete} googleUser={status === 'loading' ? null : googleUser} />
       )}
       {view === 'home' && userData && (
         <Home userData={userData} onStudy={s => { setSubject(s); setView('study') }} onUpload={() => setView('upload')} onLogout={logout} />
       )}
       {view === 'upload' && (
-        <Upload onAnalyze={analyzeUpload} onBack={() => setView('home')} />
+        <Upload onAnalyze={(subj, files) => { setSubject(subj); setUploadedFiles(files); setView('study') }} onBack={() => setView('home')} />
       )}
       {view === 'study' && userData && (
         <Study subject={subject} userData={userData} files={uploadedFiles} onHome={() => setView('home')} />

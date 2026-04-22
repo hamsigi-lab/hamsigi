@@ -1,6 +1,6 @@
 'use client'
-import { useState } from 'react'
-import type { UserData, StudyStep } from '@/lib/types'
+import { useState, useEffect } from 'react'
+import type { UserData, StudyStep, StudyContent, Topic } from '@/lib/types'
 import Step1Analysis from './study/Step1Analysis'
 import Step2ConceptMap from './study/Step2ConceptMap'
 import Step3Practice from './study/Step3Practice'
@@ -8,6 +8,11 @@ import Step4Quiz from './study/Step4Quiz'
 import Step5Results from './study/Step5Results'
 
 interface Props { subject: string; userData: UserData; onHome: () => void; files?: File[] }
+
+const SUBJECT_NAMES: Record<string, string> = {
+  science: '과학', social: '사회', history: '역사', math: '수학',
+  korean: '국어', english: '영어', moral: '도덕/윤리', tech: '기술·가정',
+}
 
 const STEPS = [
   { n: 1, label: '출제분석' },
@@ -17,11 +22,61 @@ const STEPS = [
   { n: 5, label: '결과' },
 ]
 
+function storageKey(email: string, subject: string) {
+  return `exam100_study_${email || 'guest'}_${subject}`
+}
+
 export default function Study({ subject, userData, onHome, files }: Props) {
   const [step, setStep] = useState<StudyStep>(1)
   const [webOn, setWebOn] = useState(false)
   const [focusCid, setFocusCid] = useState<string | undefined>()
   const [results, setResults] = useState<Record<string, unknown>>({})
+  const [content, setContent] = useState<StudyContent | null>(null)
+  const [generating, setGenerating] = useState(false)
+
+  const key = storageKey(userData.email, subject)
+
+  // Load saved content on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(key)
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as StudyContent
+        if (parsed.topics?.length) setContent(parsed)
+      } catch {
+        localStorage.removeItem(key)
+      }
+    }
+  }, [key])
+
+  const generateContent = async (topics: Topic[], summary: string) => {
+    const partial: StudyContent = { topics, summary }
+    setContent(partial)
+    setGenerating(true)
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topics, subject: SUBJECT_NAMES[subject] || subject }),
+      })
+      if (res.ok) {
+        const { practice, quiz } = await res.json()
+        const full: StudyContent = { topics, summary, practice, quiz }
+        setContent(full)
+        localStorage.setItem(key, JSON.stringify(full))
+      }
+    } catch (err) {
+      console.error('Generate error:', err)
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const onAnalysisComplete = (topics: Topic[], summary: string) => {
+    if (!content?.practice) {
+      generateContent(topics, summary)
+    }
+  }
 
   const goStep = (n: number) => setStep(n as StudyStep)
 
@@ -69,11 +124,50 @@ export default function Study({ subject, userData, onHome, files }: Props) {
 
       {/* Content */}
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '40px 24px' }}>
-        {step === 1 && <Step1Analysis onNext={goStep} webOn={webOn} setWebOn={setWebOn} subject={subject} files={files} />}
-        {step === 2 && <Step2ConceptMap onNext={goStep} onFocusCid={setFocusCid} />}
-        {step === 3 && <Step3Practice onNext={goStep} focusCid={focusCid} />}
-        {step === 4 && <Step4Quiz onNext={goStep} onSubmit={handleSubmit} />}
-        {step === 5 && <Step5Results answers={results} onRetry={() => setStep(4)} onHome={onHome} onReviewMap={() => setStep(2)} />}
+        {step === 1 && (
+          <Step1Analysis
+            onNext={goStep}
+            webOn={webOn}
+            setWebOn={setWebOn}
+            subject={subject}
+            files={files}
+            savedContent={content}
+            onAnalysisComplete={onAnalysisComplete}
+          />
+        )}
+        {step === 2 && (
+          <Step2ConceptMap
+            onNext={goStep}
+            onFocusCid={setFocusCid}
+            topics={content?.topics}
+            subjectName={SUBJECT_NAMES[subject] || subject}
+          />
+        )}
+        {step === 3 && (
+          <Step3Practice
+            onNext={goStep}
+            focusCid={focusCid}
+            practice={content?.practice}
+            generating={generating}
+          />
+        )}
+        {step === 4 && (
+          <Step4Quiz
+            onNext={goStep}
+            onSubmit={handleSubmit}
+            quiz={content?.quiz}
+            generating={generating}
+          />
+        )}
+        {step === 5 && (
+          <Step5Results
+            answers={results}
+            topics={content?.topics}
+            onRetry={() => setStep(4)}
+            onHome={onHome}
+            onReviewMap={() => setStep(2)}
+          />
+        )}
       </div>
     </div>
   )

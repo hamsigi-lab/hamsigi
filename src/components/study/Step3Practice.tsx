@@ -1,20 +1,45 @@
 'use client'
 import { useState } from 'react'
-import { CQ_DATA } from '@/lib/data'
+import type { CQItem } from '@/lib/types'
 
-interface Props { onNext: (step: number) => void; focusCid?: string }
+interface Props {
+  onNext: (step: number) => void
+  focusCid?: string
+  practice?: CQItem[]
+  generating?: boolean
+}
 
-type Ans = { correct: boolean; cid: string }
-
-export default function Step3Practice({ onNext, focusCid }: Props) {
-  const [answers, setAnswers] = useState<Record<number, Ans>>({})
+export default function Step3Practice({ onNext, focusCid, practice, generating }: Props) {
+  const [answers, setAnswers] = useState<Record<number, { correct: boolean; cid: string }>>({})
   const [blankInputs, setBlankInputs] = useState<Record<string, string>>({})
   const [calcInputs, setCalcInputs] = useState<Record<number, string>>({})
   const [feedbacks, setFeedbacks] = useState<Record<number, { ok: boolean; shown: boolean }>>({})
 
+  if (generating && !practice?.length) {
+    return (
+      <div className="fade-in" style={{ textAlign: 'center', padding: '80px 24px' }}>
+        <div style={{ fontSize: 52, marginBottom: 20 }}>
+          <span className="spin-anim" style={{ display: 'inline-block' }}>⟳</span>
+        </div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--t1)', marginBottom: 8 }}>확인학습 문제를 생성 중이에요</div>
+        <div style={{ fontSize: 14, color: 'var(--t2)' }}>분석 결과를 바탕으로 맞춤 문제를 만들고 있어요...</div>
+      </div>
+    )
+  }
+
+  if (!practice?.length) {
+    return (
+      <div className="fade-in" style={{ textAlign: 'center', padding: '80px 24px' }}>
+        <div style={{ fontSize: 40, marginBottom: 16 }}>📝</div>
+        <div style={{ fontSize: 16, color: 'var(--t2)' }}>먼저 출제분석을 완료해 주세요.</div>
+        <button onClick={() => onNext(1)} className="btn-brand" style={{ marginTop: 20, padding: '10px 24px', fontSize: 14 }}>① 출제분석으로</button>
+      </div>
+    )
+  }
+
   const data = focusCid
-    ? [...CQ_DATA.filter(q => q.cid === focusCid), ...CQ_DATA.filter(q => q.cid !== focusCid)]
-    : CQ_DATA
+    ? [...practice.filter(q => q.cid === focusCid), ...practice.filter(q => q.cid !== focusCid)]
+    : practice
 
   const done = Object.keys(answers).length
   const correct = Object.values(answers).filter(a => a.correct).length
@@ -47,7 +72,7 @@ export default function Step3Practice({ onNext, focusCid }: Props) {
       <div style={{ marginBottom: 22 }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--t1)', marginBottom: 5 }}>확인학습</h1>
         <p style={{ fontSize: 13, color: 'var(--t2)' }}>
-          {focusCid ? `'${data[0]?.cid}' 관련 문제부터 시작합니다.` : '교과서·학습지 전 범위의 빈칸 넣기, O/X 문제를 풀어보세요.'}
+          {focusCid ? `선택한 주제 관련 문제부터 시작합니다.` : '업로드 자료 기반 빈칸 넣기, O/X 문제를 풀어보세요.'}
         </p>
       </div>
 
@@ -61,7 +86,6 @@ export default function Step3Practice({ onNext, focusCid }: Props) {
         </div>
       )}
 
-      {/* Progress */}
       <div style={{ height: 4, background: 'var(--bg3)', borderRadius: 2, marginBottom: 20 }}>
         <div style={{ height: '100%', width: `${done / data.length * 100}%`, background: 'var(--brand)', borderRadius: 2, transition: 'width 0.5s' }} />
       </div>
@@ -71,16 +95,16 @@ export default function Step3Practice({ onNext, focusCid }: Props) {
         return (
           <div key={qi} className="card" style={{ padding: '16px 18px', marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-              <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--t3)' }}>문제 {qi+1}</span>
-              <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 700,
-                color: q.pct >= 90 ? 'var(--red)' : q.pct >= 75 ? 'var(--amber)' : 'var(--brand)' }}>{q.pct}%</span>
+              <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--t3)' }}>문제 {qi + 1}</span>
+              <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 700, color: (q.pct || 0) >= 90 ? 'var(--red)' : (q.pct || 0) >= 75 ? 'var(--amber)' : 'var(--brand)' }}>{q.pct}%</span>
               <span style={{ fontSize: 11, padding: '2px 8px', border: '1px solid var(--bd)', borderRadius: 6, color: 'var(--t3)' }}>{q.src}</span>
             </div>
             <div style={{ fontSize: 14, color: 'var(--t1)', lineHeight: 1.8, marginBottom: 10 }}
-              dangerouslySetInnerHTML={{ __html: q.text
-                .replace(/\[①\]/g,'<span style="border-bottom:2px solid var(--brand);padding:0 4px;color:var(--brand);font-weight:600">①</span>')
-                .replace(/\[②\]/g,'<span style="border-bottom:2px solid var(--brand);padding:0 4px;color:var(--brand);font-weight:600">②</span>')
-                .replace(/\[③\]/g,'<span style="border-bottom:2px solid var(--brand);padding:0 4px;color:var(--brand);font-weight:600">③</span>')
+              dangerouslySetInnerHTML={{
+                __html: (q.text || '')
+                  .replace(/\[①\]/g, '<span style="border-bottom:2px solid var(--brand);padding:0 4px;color:var(--brand);font-weight:600">①</span>')
+                  .replace(/\[②\]/g, '<span style="border-bottom:2px solid var(--brand);padding:0 4px;color:var(--brand);font-weight:600">②</span>')
+                  .replace(/\[③\]/g, '<span style="border-bottom:2px solid var(--brand);padding:0 4px;color:var(--brand);font-weight:600">③</span>')
               }}
             />
 
@@ -88,7 +112,7 @@ export default function Step3Practice({ onNext, focusCid }: Props) {
               <>
                 {q.type === 'ox' && (
                   <div style={{ display: 'flex', gap: 10 }}>
-                    {['O','X'].map(v => (
+                    {['O', 'X'].map(v => (
                       <button key={v} onClick={() => checkOX(qi, v)} style={{
                         flex: 1, padding: '11px', borderRadius: 'var(--r)', border: '1.5px solid var(--bd)', background: 'var(--bg2)',
                         color: 'var(--t1)', fontSize: 20, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit',
@@ -107,7 +131,7 @@ export default function Step3Practice({ onNext, focusCid }: Props) {
                         <input key={bi} className="input-base" style={{ width: 100 }}
                           value={blankInputs[`${qi}-${bi}`] || ''}
                           onChange={e => setBlankInputs(p => ({ ...p, [`${qi}-${bi}`]: e.target.value }))}
-                          placeholder={`${bi+1}번`}
+                          placeholder={`${bi + 1}번`}
                         />
                       ))}
                     </div>
@@ -130,16 +154,20 @@ export default function Step3Practice({ onNext, focusCid }: Props) {
 
             {fb?.shown && (
               <div className="fade-in">
-                <div style={{ borderRadius: 'var(--r-sm)', padding: '11px 14px', fontSize: 13, lineHeight: 1.7,
+                <div style={{
+                  borderRadius: 'var(--r-sm)', padding: '11px 14px', fontSize: 13, lineHeight: 1.7,
                   background: fb.ok ? 'var(--green-soft)' : 'var(--red-soft)',
                   border: `1px solid ${fb.ok ? '#6EE7B7' : '#FCA5A5'}`,
-                  color: fb.ok ? 'var(--green-text)' : 'var(--red-text)' }}>
+                  color: fb.ok ? 'var(--green-text)' : 'var(--red-text)',
+                }}>
                   {fb.ok ? '✓ ' : '✗ '}{fb.ok ? q.ok : q.ng}
                 </div>
                 {q.sim && (
-                  <div style={{ borderRadius: 'var(--r-sm)', padding: '10px 14px', fontSize: 12, lineHeight: 1.7,
+                  <div style={{
+                    borderRadius: 'var(--r-sm)', padding: '10px 14px', fontSize: 12, lineHeight: 1.7,
                     background: 'var(--brand-soft)', border: '1px solid var(--brand-border)',
-                    color: 'var(--brand-text)', marginTop: 7 }}>
+                    color: 'var(--brand-text)', marginTop: 7,
+                  }}>
                     <strong>유사:</strong> {q.sim}
                   </div>
                 )}

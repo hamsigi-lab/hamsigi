@@ -1,17 +1,21 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { ALL_QUESTIONS } from '@/lib/data'
 import type { QuizItem } from '@/lib/types'
 
-interface Props { onNext: (step: number) => void; onSubmit: (ans: Record<string, unknown>) => void }
+interface Props {
+  onNext: (step: number) => void
+  onSubmit: (ans: Record<string, unknown>) => void
+  quiz?: QuizItem[]
+  generating?: boolean
+}
 
 type Diff = 'easy' | 'medium' | 'hard' | 'exam'
 
 const DIFF_INFO: Record<Diff, { label: string; desc: string; color: string; soft: string }> = {
-  easy:   { label: '기초', desc: '핵심 개념 확인 문제 위주. 처음 공부할 때 추천.', color: 'var(--green)', soft: 'var(--green-soft)' },
-  medium: { label: '표준', desc: '객관식 23 + 서답형 5 + 서술형 2. 전국 평균 출제 수준.', color: 'var(--brand)', soft: 'var(--brand-soft)' },
-  hard:   { label: '심화', desc: '계산 문제·복합 선택지 강화. 상위권 목표 학생 추천.', color: 'var(--amber)', soft: 'var(--amber-soft)' },
-  exam:   { label: '실전', desc: '실제 시험과 동일한 구성. 100점 도전 최종 점검.', color: 'var(--red)', soft: 'var(--red-soft)' },
+  easy:   { label: '기초', desc: '핵심 개념 확인 문제 위주.', color: 'var(--green)', soft: 'var(--green-soft)' },
+  medium: { label: '표준', desc: '전국 평균 출제 수준.', color: 'var(--brand)', soft: 'var(--brand-soft)' },
+  hard:   { label: '심화', desc: '복합 문제 강화. 상위권 목표 추천.', color: 'var(--amber)', soft: 'var(--amber-soft)' },
+  exam:   { label: '실전', desc: '실제 시험 구성. 최종 점검.', color: 'var(--red)', soft: 'var(--red-soft)' },
 }
 
 const TYPE_INFO: Record<string, { label: string; color: string; soft: string }> = {
@@ -20,21 +24,47 @@ const TYPE_INFO: Record<string, { label: string; color: string; soft: string }> 
   essay: { label: '서술형', color: 'var(--red)', soft: 'var(--red-soft)' },
 }
 
-function getQuestions(diff: Diff): QuizItem[] {
-  if (diff === 'easy') return ALL_QUESTIONS.filter(q => q.diff === 'easy' || [5,11,21,27].includes(q.num))
-  if (diff === 'hard') return ALL_QUESTIONS.filter(q => ['medium','hard'].includes(q.diff))
-  return ALL_QUESTIONS
+function filterQuestions(all: QuizItem[], diff: Diff): QuizItem[] {
+  if (diff === 'easy') return all.filter(q => q.diff === 'easy')
+  if (diff === 'hard') return all.filter(q => q.diff === 'medium' || q.diff === 'hard')
+  if (diff === 'exam') return all
+  return all
 }
 
-export default function Step4Quiz({ onSubmit }: Props) {
+export default function Step4Quiz({ onSubmit, quiz, generating }: Props) {
   const [diff, setDiff] = useState<Diff>('medium')
   const [webOn, setWebOn] = useState(false)
-  const [questions, setQuestions] = useState<QuizItem[]>(ALL_QUESTIONS)
+  const [questions, setQuestions] = useState<QuizItem[]>(quiz || [])
   const [objAns, setObjAns] = useState<Record<number, number>>({})
   const [shortAns, setShortAns] = useState<Record<number, string>>({})
   const [essayAns, setEssayAns] = useState<Record<number, string>>({})
 
-  useEffect(() => { setQuestions(getQuestions(diff)) }, [diff])
+  useEffect(() => {
+    if (quiz?.length) {
+      setQuestions(filterQuestions(quiz, diff))
+    }
+  }, [quiz, diff])
+
+  if (generating && !quiz?.length) {
+    return (
+      <div className="fade-in" style={{ textAlign: 'center', padding: '80px 24px' }}>
+        <div style={{ fontSize: 52, marginBottom: 20 }}>
+          <span className="spin-anim" style={{ display: 'inline-block' }}>⟳</span>
+        </div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--t1)', marginBottom: 8 }}>예상 문제를 생성 중이에요</div>
+        <div style={{ fontSize: 14, color: 'var(--t2)' }}>분석 결과를 바탕으로 맞춤 문제를 만들고 있어요...</div>
+      </div>
+    )
+  }
+
+  if (!quiz?.length) {
+    return (
+      <div className="fade-in" style={{ textAlign: 'center', padding: '80px 24px' }}>
+        <div style={{ fontSize: 40, marginBottom: 16 }}>📝</div>
+        <div style={{ fontSize: 16, color: 'var(--t2)' }}>먼저 출제분석을 완료해 주세요.</div>
+      </div>
+    )
+  }
 
   const done = questions.filter((q, qi) => {
     if (q.type === 'obj') return objAns[qi] !== undefined
@@ -48,14 +78,14 @@ export default function Step4Quiz({ onSubmit }: Props) {
     <div className="fade-in">
       <div style={{ marginBottom: 22 }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--t1)', marginBottom: 5 }}>예상 문제 — {questions.length}문항</h1>
-        <p style={{ fontSize: 13, color: 'var(--t2)' }}>객관식 23 · 서답형 5 · 서술형 2. 난이도를 선택하면 문제 구성이 바뀝니다.</p>
+        <p style={{ fontSize: 13, color: 'var(--t2)' }}>난이도를 선택하면 문제 구성이 바뀝니다.</p>
       </div>
 
       {/* Difficulty selector */}
       <div className="card" style={{ padding: '18px', marginBottom: 14 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--t1)', marginBottom: 10 }}>난이도 선택</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-          {(['easy','medium','hard','exam'] as Diff[]).map(d => {
+          {(['easy', 'medium', 'hard', 'exam'] as Diff[]).map(d => {
             const info = DIFF_INFO[d]
             const on = diff === d
             return (
@@ -85,26 +115,25 @@ export default function Step4Quiz({ onSubmit }: Props) {
       </div>
 
       {/* Progress */}
-      <div style={{ height: 4, background: 'var(--bg3)', borderRadius: 2, marginBottom: 20 }}>
-        <div style={{ height: '100%', width: `${done / questions.length * 100}%`, background: 'var(--brand)', borderRadius: 2, transition: 'width 0.3s' }} />
+      <div style={{ height: 4, background: 'var(--bg3)', borderRadius: 2, marginBottom: 4 }}>
+        <div style={{ height: '100%', width: `${questions.length > 0 ? done / questions.length * 100 : 0}%`, background: 'var(--brand)', borderRadius: 2, transition: 'width 0.3s' }} />
       </div>
-      <div style={{ fontSize: 12, color: 'var(--t2)', textAlign: 'right', marginTop: -16, marginBottom: 16 }}>
+      <div style={{ fontSize: 12, color: 'var(--t2)', textAlign: 'right', marginBottom: 16 }}>
         {done} / {questions.length} 완료
       </div>
 
-      {/* Questions */}
       {questions.map((q, qi) => {
         const tInfo = TYPE_INFO[q.type]
-        const dInfo = DIFF_INFO[q.diff]
+        const dInfo = DIFF_INFO[q.diff] || DIFF_INFO.medium
         return (
           <div key={`${diff}-${qi}`} className="card" style={{ padding: '16px 18px', marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10, flexWrap: 'wrap' }}>
-              <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--t3)', fontWeight: 600 }}>{q.num}번</span>
-              <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 700, color: q.pct >= 80 ? 'var(--red)' : q.pct >= 60 ? 'var(--amber)' : 'var(--brand)' }}>{q.pct}%</span>
+              <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--t3)', fontWeight: 600 }}>{q.num || qi + 1}번</span>
+              <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 700, color: (q.pct || 0) >= 80 ? 'var(--red)' : (q.pct || 0) >= 60 ? 'var(--amber)' : 'var(--brand)' }}>{q.pct}%</span>
               <span style={{ fontSize: 11, padding: '2px 8px', border: '1px solid var(--bd)', borderRadius: 6, color: 'var(--t3)' }}>{q.src}</span>
               <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6, background: tInfo.soft, color: tInfo.color, fontWeight: 600 }}>{tInfo.label}</span>
               <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6, background: dInfo.soft, color: dInfo.color, fontWeight: 600 }}>{dInfo.label}</span>
-              {webOn && q.pct >= 80 && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: 'var(--blue-soft)', color: 'var(--blue-text)', fontFamily: 'var(--mono)', fontWeight: 600 }}>전국기출</span>}
+              {webOn && (q.pct || 0) >= 80 && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: 'var(--blue-soft)', color: 'var(--blue-text)', fontFamily: 'var(--mono)', fontWeight: 600 }}>전국기출</span>}
             </div>
             <div style={{ fontSize: 14, color: 'var(--t1)', lineHeight: 1.8, marginBottom: 12 }}>{q.text}</div>
 

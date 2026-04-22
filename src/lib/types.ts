@@ -1,6 +1,24 @@
 export type AppView = 'onboard' | 'home' | 'upload' | 'study'
 export type StudyStep = 1 | 2 | 3 | 4 | 5
 
+export interface Topic {
+  title: string
+  pct: number
+  type: '서술형' | '서답형' | '객관식'
+  keys: string[]
+  desc: string
+  src: string
+  color: string
+  cid: string
+}
+
+export interface StudyContent {
+  topics: Topic[]
+  summary: string
+  practice?: CQItem[]
+  quiz?: QuizItem[]
+}
+
 export interface UserData {
   name: string
   email: string
